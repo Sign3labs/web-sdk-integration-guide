@@ -11,7 +11,7 @@ The Sign3 WEB SDK is a JavaScript-based fraud prevention toolkit designed to ass
 3. `sign3.initialize(config)` returns a promise that resolves to an object containing the `get` method.
 4. After initializing, you can get browser intelligence upon specific actions (e.g., clicking on Login, Payment, and Registration buttons before calling the API).
 5. Call `result.get().then(response)`, which returns a promise resolving to a response object containing browser information or rejecting with an error if something went wrong.
-6. The response object contains fields like device ID, request ID, browser intelligence data, or IP intelligence data, depending on your use case.
+6. The response object contains fields like fingerprint, request ID, browser intelligence data, or IP intelligence data.
 
 ---
 
@@ -49,9 +49,9 @@ sdk.initialize({
 
 ---
 
-## Fetching User Data
+## Fetching Browser Data
 
-Once initialized successfully, use the `get` method to retrieve user information.
+Once initialized successfully, use the `get` method to retrieve browser information.
 
 ```javascript
 result.get({
