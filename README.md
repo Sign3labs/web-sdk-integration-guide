@@ -55,7 +55,8 @@ Once initialized successfully, use the `get` method to retrieve browser informat
 
 ```javascript
 result.get({
-  phoneNumber: '967****766'
+  phoneNumber: '967****766',
+  userId: 'user******'
 }).then((response) => {
   console.log(response);
 }, (error) => {
@@ -67,7 +68,8 @@ result.get({
 
 | Parameter     | Type     | Required | Description                                                                                 |
 | ------------- | -------- | -------- | ------------------------------------------------------------------------------------------- |
-| `phoneNumber` | `string` | Yes      | The phone number of the user to triangulate this data later with the Digital Footprint API. |
+| `phoneNumber` | `string` | No      | The phone number of the user to triangulate this data later with the Digital Footprint API. |
+| `userId` | `string` | No      | The user ID of the user. |
 
 **Note:** The `get` call accepts a dictionary where you can also send email, userId, etc.
 
