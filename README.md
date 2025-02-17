@@ -56,7 +56,7 @@ Once initialized successfully, use the `get` method to retrieve browser informat
 ```javascript
 result.get({
   phoneNumber: '967****766',
-  userId: `user******`
+  userId: 'user******'
 }).then((response) => {
   console.log(response);
 }, (error) => {
