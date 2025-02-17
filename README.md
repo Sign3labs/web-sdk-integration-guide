@@ -69,7 +69,7 @@ result.get({
 | Parameter     | Type     | Required | Description                                                                                 |
 | ------------- | -------- | -------- | ------------------------------------------------------------------------------------------- |
 | `phoneNumber` | `string` | No      | The phone number of the user to triangulate this data later with the Digital Footprint API. |
-| `userID` | `string` | No      | The use ID of the user. |
+| `userId` | `string` | No      | The user ID of the user. |
 
 **Note:** The `get` call accepts a dictionary where you can also send email, userId, etc.
 
