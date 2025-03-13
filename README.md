@@ -27,7 +27,7 @@ To use the SDK, initialize it with the required parameters.
 import sdk from './sign3-web-sdk.js';
 
 sdk.initialize({
-  env: 'PROD', // required: The environment ('PROD', 'DEV', 'STAGE').
+  env: 'PROD', // required: The environment ('PROD', 'STAGE').
   sessionId: 'your-unique-session-id', // required: A unique session identifier to track the user session.
   apiKey: 'your-api-key', // required: API key used for authentication (shared separately by Sign3).
   apiSecret: 'your-api-secret', // required: Secret key used for authentication (shared separately by Sign3).
@@ -42,7 +42,7 @@ sdk.initialize({
 
 | Parameter   | Type     | Required | Description                                             |
 | ----------- | -------- | -------- | ------------------------------------------------------- |
-| `env`       | `string` | Yes      | Specifies the environment ('PROD', 'DEV', 'STAGE').     |
+| `env`       | `string` | Yes      | Specifies the environment ('PROD', 'STAGE').     |
 | `sessionId` | `string` | Yes      | A unique session identifier to track the user session.  |
 | `apiKey`    | `string` | Yes      | API key used for authentication (shared separately).    |
 | `apiSecret` | `string` | Yes      | Secret key used for authentication (shared separately). |
