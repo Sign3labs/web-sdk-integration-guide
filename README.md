@@ -38,6 +38,16 @@ sdk.initialize({
 });
 ```
 
+
+### Minimum Requirements
+
+| Parameter            | Minimum Requirement                                                                                           |
+|----------------------|---------------------------------------------------------------------------------------------------------------|
+| **Browser**          | - Google Chrome 70+ <br> - Mozilla Firefox 65+ <br> - Safari 12.1+ <br> - Microsoft Edge 80+ <br> - Opera 70+ |
+| **JavaScript**       | ES6 or later                                                                                                  |
+| **Network Connectivity** | Stable internet connection                                                                                |
+
+
 ### Parameters
 
 | Parameter   | Type     | Required | Description                                             |
