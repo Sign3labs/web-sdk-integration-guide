@@ -39,6 +39,43 @@ sdk.initialize({
 ```
 
 
+## Dynamic Import
+
+The Sign3 SDK can be loaded dynamically using the native ES module import() syntax. It is recommended to initialize the SDK once at application startup, or as early as possible in the page lifecycle, to ensure all required signals are captured correctly.
+
+Assuming you have the SDK CDN URL:
+
+### Initialization
+
+To use the SDK, initialize it with the required parameters.
+
+```javascript
+<script>
+    // Initialize the sdk once at web application startup.
+    // Alternatively initialize as early on the page as possible.
+
+    const sdkPromise = import('https://sdks.sign3.in/sdk.js')
+      .then(sdk => {
+        return sdk.initialize({
+          env: "STAGE", // required: The environment ('PROD' or 'STAGE').
+          sessionId: 'your-unique-session-id', // required: A unique session identifier to track the user session.
+          apiKey: 'your-tenant-id', // required: Tenant id provided by Sign3.
+          apiSecret: 'your-tenant-secret', // required: Secret key provided by Sign3.
+        })
+      })
+
+    // Analyze the visitor when necessary.
+    sdkPromise.then(
+        fp => fp.get(),
+        error => console.log(error)
+      ).then(
+        result => console.log('result: ', result),
+        error => console.log('error: ', error)
+      )
+  </script>
+```
+
+
 ### Minimum Requirements
 
 | Parameter            | Minimum Requirement                                                                                           |
