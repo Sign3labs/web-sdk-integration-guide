@@ -39,42 +39,205 @@ sdk.initialize({
 ```
 
 
-## Dynamic Import
+## Dynamic Script Loading
 
-The Sign3 SDK can be loaded dynamically using the native ES module import() syntax. It is recommended to initialize the SDK once at application startup, or as early as possible in the page lifecycle, to ensure all required signals are captured correctly.
+<mark>Actual SDK url will be provided seperately by sign3. URL used here is dummy.</mark>
 
-Assuming you have the SDK CDN URL:
+### Vanilla JavaScript
+   
+The Sign3 SDK can be loaded via a script tag and accessed through the global hydraSdk object. It is recommended to initialize the SDK once at application startup, or as early as possible in the page lifecycle, to ensure all required signals are captured correctly.
+
+Assuming you have the SDK CDN URL: https://cdn.example.com/sdk/fingerprint.min.js
 
 ### Initialization
 
-To use the SDK, initialize it with the required parameters.
+Load the SDK script and initialize it with the required parameters:
 
 ```javascript
+<!-- Load the SDK -->
+<script src="https://cdn.example.com/sdk/fingerprint.min.js"></script>
+
 <script>
-    // Initialize the sdk once at web application startup.
-    // Alternatively initialize as early on the page as possible.
+  (async function () {
+    try {
+      // Initialize — rejects if apiKey, apiSecret, or sessionId is missing/invalid
+      const sdk = await window.hydraSdk.initialize({
+        env: "PROD",                    // "PROD" or "STAGE" based on target environment
+        sessionId: "unique-session-id", // Unique session identifier
+        apiKey: "your-api-key",         // Tenant ID provided by Sign3
+        apiSecret: "your-api-secret",   // Tenant secret provided by Sign3
+      });
 
-    const sdkPromise = import('https://sdks.sign3.in/sdk.js')
-      .then(sdk => {
-        return sdk.initialize({
-          env: "STAGE", // required: The environment ('PROD' or 'STAGE').
-          sessionId: 'your-unique-session-id', // required: A unique session identifier to track the user session.
-          apiKey: 'your-tenant-id', // required: Tenant id provided by Sign3.
-          apiSecret: 'your-tenant-secret', // required: Secret key provided by Sign3.
-        })
-      })
-
-    // Analyze the visitor when necessary.
-    sdkPromise.then(
-        fp => fp.get(),
-        error => console.log(error)
-      ).then(
-        result => console.log('result: ', result),
-        error => console.log('error: ', error)
-      )
-  </script>
+      try {
+        // get() accepts an optional dictionary of custom fields for your integration
+        const result = await sdk.get({
+          userId: "abc123",
+          loginIdentifier: "abcd-12erf-rtyv3-pfrtec",
+          // ...any additional fields
+        });
+        console.log("Fingerprint:", result);
+      } catch (err) {
+        // sdk.get() failed — signals couldn't be collected or the server request failed
+        console.error("Fingerprint collection failed:", err.message);
+      }
+    } catch (err) {
+      // initialize() failed — invalid or missing apiKey, apiSecret, or sessionId
+      console.error("SDK initialization failed:", err.message);
+    }
+  })();
+</script>
 ```
 
+### React / Next.js — Provider Approach
+
+Load the SDK script once in your root layout and use a provider to manage initialization. Any component in the tree can then access the SDK via a hook.
+
+#### Step 1: Load the script
+
+```javascript
+// app/layout.js
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://cdn.example.com" />
+      </head>
+      <body>
+        {children}
+        <Script
+          src="https://cdn.example.com/sdk/fingerprint.min.js"
+          strategy="beforeInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+#### Step 2: Create the provider
+
+```javascript
+// providers/fingerprint-provider.jsx
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+
+const FingerprintContext = createContext(null);
+
+export function FingerprintProvider({ sessionId, apiKey, apiSecret, env = "PROD", children }) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState(null);
+  const sdkRef = useRef(null);
+  const initPromiseRef = useRef(null);
+
+  useEffect(() => {
+    if (!window.hydraSdk) {
+      setError(new Error("SDK script not loaded"));
+      return;
+    }
+    if (sdkRef.current) {
+      setReady(true);
+      return;
+    }
+
+    if (!initPromiseRef.current) {
+      initPromiseRef.current = window.hydraSdk.initialize({
+        env,
+        sessionId,
+        apiKey,
+        apiSecret,
+      });
+    }
+
+    let mounted = true;
+
+    initPromiseRef.current
+      .then((instance) => {
+        sdkRef.current = instance;
+        if (mounted) setReady(true);
+      })
+      .catch((err) => {
+        initPromiseRef.current = null;
+        if (mounted) setError(err);
+      });
+
+    return () => { mounted = false; };
+  }, [env, sessionId, apiKey, apiSecret]);
+
+  const getFingerprint = useCallback(
+    async (additionalParams) => {
+      if (!sdkRef.current) throw new Error("SDK not initialized yet");
+      return sdkRef.current.get(additionalParams);
+    },
+    []
+  );
+
+  return (
+    <FingerprintContext.Provider value={{ getFingerprint, ready, error }}>
+      {children}
+    </FingerprintContext.Provider>
+  );
+}
+
+export function useFingerprint() {
+  const ctx = useContext(FingerprintContext);
+  if (!ctx) throw new Error("useFingerprint must be used inside FingerprintProvider");
+  return ctx;
+}
+```
+
+#### Step 3: Wrap your app
+
+```javascript
+// app/page.js
+import { FingerprintProvider } from "@/providers/fingerprint-provider";
+import MyComponent from "@/components/my-component";
+
+export default function Page() {
+  return (
+    <FingerprintProvider
+      env="PROD"
+      sessionId="unique-session-id"
+      apiKey="your-api-key"
+      apiSecret="your-api-secret"
+    >
+      <MyComponent />
+    </FingerprintProvider>
+  );
+}
+```
+
+#### Step 4: Use anywhere
+
+```javascript
+// components/my-component.jsx
+"use client";
+
+import { useFingerprint } from "@/providers/fingerprint-provider";
+
+export default function MyComponent() {
+  const { getFingerprint, ready, error } = useFingerprint();
+
+  if (error) return <p>SDK failed to load.</p>;
+  if (!ready) return <p>Loading...</p>;
+
+  const handleClick = async () => {
+    try {
+      const result = await getFingerprint({
+        userId: "abc123",
+        loginIdentifier: "abcd-12erf-rtyv3-pfrtec",
+      });
+      console.log("Fingerprint:", result);
+    } catch (err) {
+      console.error("Fingerprint collection failed:", err.message);
+    }
+  };
+
+  return <button onClick={handleClick}>Get Fingerprint</button>;
+}
+```
+---
 
 ### Minimum Requirements
 
