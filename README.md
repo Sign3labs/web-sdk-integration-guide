@@ -1,36 +1,36 @@
 # Sign3 Web SDK Integration Guide
 
-The Sign3 WEB SDK is a JavaScript-based fraud prevention toolkit designed to assess browser security, detecting potential risks such as Proxy, VPN connections, USER AGENT spoofing, TOR connections, and more. Providing insights into the browser's safety, it enhances security measures against fraudulent activities and ensures robust protection.
+The **Sign3 Web SDK** is a JavaScript-based fraud prevention toolkit designed to assess browser security and detect potential risks such as proxy/VPN usage, user agent spoofing, TOR connections, and more.
+
+By providing real-time browser intelligence, it enhances fraud detection capabilities and strengthens protection against malicious activity.
 
 ---
 
-## Adding Sign3 WEB SDK to Your Project
+## Adding the Sign3 Web SDK to Your Project
 
-1. Download the JavaScript Agent from the CDN link and include it in your codebase with file name `sign3-web-sdk.js` (provided seperately).
-2. Call `sign3.initialize(config)` to initialize the JavaScript client for signal collection.
-3. `sign3.initialize(config)` returns a promise that resolves to an object containing the `get` method.
-4. After initializing, you can get browser intelligence upon specific actions (e.g., clicking on Login, Payment, and Registration buttons before calling the API).
-5. Call `result.get().then(response)`, which returns a promise resolving to a response object containing browser information or rejecting with an error if something went wrong.
-6. The response object contains fields like fingerprint, request ID, browser intelligence data, or IP intelligence data.
+1. Download the JavaScript agent from the provided CDN link and include it in your codebase as `sign3-web-sdk.js`.
+2. Call `sign3.initialize(config)` to initialize the SDK.
+3. `sign3.initialize(config)` returns a Promise that resolves to an object containing the `get` method.
+4. After initialization, call `get()` before critical user actions (e.g., login, payment, registration API calls).
+5. Call `result.get().then(response)` to retrieve browser intelligence data.
+6. The response object includes fields such as fingerprint, request ID, browser intelligence, and IP intelligence data.
 
 ---
 
-## Bundling Into Your Code
+# Option A: Bundling Into Your Code
 
-Assuming you have the SDK inside a file named `sign3-web-sdk.js`:
+If the SDK file is saved locally as `sign3-web-sdk.js`:
 
-### Initialization
-
-To use the SDK, initialize it with the required parameters.
+## Initialization
 
 ```javascript
 import sdk from './sign3-web-sdk.js';
 
 sdk.initialize({
-  env: 'PROD', // required: The environment ('PROD', 'STAGE').
-  sessionId: 'your-unique-session-id', // required: A unique session identifier to track the user session.
-  apiKey: 'your-api-key', // required: API key used for authentication (shared separately by Sign3).
-  apiSecret: 'your-api-secret', // required: Secret key used for authentication (shared separately by Sign3).
+  env: 'PROD', // Required: 'PROD' or 'STAGE'
+  sessionId: 'your-unique-session-id', // Required: Unique session identifier
+  apiKey: 'your-api-key', // Required: Provided by Sign3
+  apiSecret: 'your-api-secret', // Required: Provided by Sign3
 }).then((result) => {
   console.log('Initialization successful');
 }, (error) => {
@@ -38,30 +38,248 @@ sdk.initialize({
 });
 ```
 
+---
 
-### Minimum Requirements
+# Option B: Dynamic Script Loading (Recommended)
 
-| Parameter            | Minimum Requirement                                                                                           |
-|----------------------|---------------------------------------------------------------------------------------------------------------|
-| **Browser**          | - Google Chrome 70+ <br> - Mozilla Firefox 65+ <br> - Safari 12.1+ <br> - Microsoft Edge 80+ <br> - Opera 70+ |
-| **JavaScript**       | ES6 or later                                                                                                  |
-| **Network Connectivity** | Stable internet connection                                                                                |
-
-
-### Parameters
-
-| Parameter   | Type     | Required | Description                                             |
-| ----------- | -------- | -------- | ------------------------------------------------------- |
-| `env`       | `string` | Yes      | Specifies the environment ('PROD', 'STAGE').     |
-| `sessionId` | `string` | Yes      | A unique session identifier to track the user session.  |
-| `apiKey`    | `string` | Yes      | API key used for authentication (shared separately).    |
-| `apiSecret` | `string` | Yes      | Secret key used for authentication (shared separately). |
+> The actual SDK URL will be provided separately by Sign3. The URL shown below is for demonstration purposes only.
 
 ---
 
-## Fetching Browser Data
+## Vanilla JavaScript Integration
 
-Once initialized successfully, use the `get` method to retrieve browser information.
+Load the SDK using a script tag. The global object will be available as `window.hydraSdk`.
+
+It is recommended to initialize the SDK once at application startup (or as early as possible in the page lifecycle) to ensure all signals are captured correctly.
+
+Assume that the CDN url shared by Sign3 is:
+
+```
+https://cdn.example.com/sdk/fingerprint.min.js
+```
+
+### Initialization
+
+```html
+<!-- Load the SDK -->
+<script src="https://cdn.example.com/sdk/fingerprint.min.js"></script>
+
+<script>
+  (async function () {
+    try {
+      const sdk = await window.hydraSdk.initialize({
+        env: "PROD",
+        sessionId: "unique-session-id",
+        apiKey: "your-api-key",
+        apiSecret: "your-api-secret",
+      });
+
+      try {
+        const result = await sdk.get({
+          userId: "abc123",
+          loginIdentifier: "abcd-12erf-rtyv3-pfrtec",
+        });
+
+        console.log("Fingerprint:", result);
+      } catch (err) {
+        console.error("Fingerprint collection failed:", err.message);
+      }
+    } catch (err) {
+      console.error("SDK initialization failed:", err.message);
+    }
+  })();
+</script>
+```
+
+---
+
+# React / Next.js — Provider Approach
+
+Load the SDK once in your root layout and expose it via a provider.
+
+---
+
+## Step 1: Load the Script
+
+```javascript
+// app/layout.js
+import Script from "next/script";
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://cdn.example.com" />
+      </head>
+      <body>
+        {children}
+        <Script
+          src="https://cdn.example.com/sdk/fingerprint.min.js"
+          strategy="beforeInteractive"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## Step 2: Create the Provider
+
+```javascript
+// providers/fingerprint-provider.jsx
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+
+const FingerprintContext = createContext(null);
+
+export function FingerprintProvider({ sessionId, apiKey, apiSecret, env = "PROD", children }) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState(null);
+  const sdkRef = useRef(null);
+  const initPromiseRef = useRef(null);
+
+  useEffect(() => {
+    if (!window.hydraSdk) {
+      setError(new Error("SDK script not loaded"));
+      return;
+    }
+
+    if (sdkRef.current) {
+      setReady(true);
+      return;
+    }
+
+    if (!initPromiseRef.current) {
+      initPromiseRef.current = window.hydraSdk.initialize({
+        env,
+        sessionId,
+        apiKey,
+        apiSecret,
+      });
+    }
+
+    let mounted = true;
+
+    initPromiseRef.current
+      .then((instance) => {
+        sdkRef.current = instance;
+        if (mounted) setReady(true);
+      })
+      .catch((err) => {
+        initPromiseRef.current = null;
+        if (mounted) setError(err);
+      });
+
+    return () => { mounted = false; };
+  }, [env, sessionId, apiKey, apiSecret]);
+
+  const getFingerprint = useCallback(
+    async (additionalParams) => {
+      if (!sdkRef.current) throw new Error("SDK not initialized yet");
+      return sdkRef.current.get(additionalParams);
+    },
+    []
+  );
+
+  return (
+    <FingerprintContext.Provider value={{ getFingerprint, ready, error }}>
+      {children}
+    </FingerprintContext.Provider>
+  );
+}
+
+export function useFingerprint() {
+  const ctx = useContext(FingerprintContext);
+  if (!ctx) throw new Error("useFingerprint must be used within FingerprintProvider");
+  return ctx;
+}
+```
+
+---
+
+## Step 3: Wrap Your Application
+
+```javascript
+// app/page.js
+import { FingerprintProvider } from "@/providers/fingerprint-provider";
+import MyComponent from "@/components/my-component";
+
+export default function Page() {
+  return (
+    <FingerprintProvider
+      env="PROD"
+      sessionId="unique-session-id"
+      apiKey="your-api-key"
+      apiSecret="your-api-secret"
+    >
+      <MyComponent />
+    </FingerprintProvider>
+  );
+}
+```
+
+---
+
+## Step 4: Use Anywhere in Your App
+
+```javascript
+// components/my-component.jsx
+"use client";
+
+import { useFingerprint } from "@/providers/fingerprint-provider";
+
+export default function MyComponent() {
+  const { getFingerprint, ready, error } = useFingerprint();
+
+  if (error) return <p>SDK failed to load.</p>;
+  if (!ready) return <p>Loading...</p>;
+
+  const handleClick = async () => {
+    try {
+      const result = await getFingerprint({
+        userId: "abc123",
+        loginIdentifier: "abcd-12erf-rtyv3-pfrtec",
+      });
+
+      console.log("Fingerprint:", result);
+    } catch (err) {
+      console.error("Fingerprint collection failed:", err.message);
+    }
+  };
+
+  return <button onClick={handleClick}>Get Fingerprint</button>;
+}
+```
+
+---
+
+# Minimum Requirements
+
+| Parameter      | Minimum Requirement                                        |
+| -------------- | ---------------------------------------------------------- |
+| **Browser**    | Chrome 70+, Firefox 65+, Safari 12.1+, Edge 80+, Opera 70+ |
+| **JavaScript** | ES6 or later                                               |
+| **Network**    | Stable internet connection                                 |
+
+---
+
+# Initialization Parameters
+
+| Parameter   | Type   | Required | Description                        |
+| ----------- | ------ | -------- | ---------------------------------- |
+| `env`       | string | Yes      | Environment: `'PROD'` or `'STAGE'` |
+| `sessionId` | string | Yes      | Unique session identifier          |
+| `apiKey`    | string | Yes      | API key provided by Sign3          |
+| `apiSecret` | string | Yes      | API secret provided by Sign3       |
+
+---
+
+# Fetching Browser Data
+
+After successful initialization:
 
 ```javascript
 result.get({
@@ -69,45 +287,42 @@ result.get({
   userId: 'user******'
 }).then((response) => {
   console.log(response);
-}, (error) => {
+}).catch((error) => {
   console.log('Get error:', error.message);
 });
 ```
 
-### Parameters for `get` Method
+### Optional Parameters for `get()`
 
-| Parameter     | Type     | Required | Description                                                                                 |
-| ------------- | -------- | -------- | ------------------------------------------------------------------------------------------- |
-| `phoneNumber` | `string` | No      | The phone number of the user to triangulate this data later with the Digital Footprint API. |
-| `userId` | `string` | No      | The user ID of the user. |
+| Parameter     | Type   | Required | Description                                       |
+| ------------- | ------ | -------- | ------------------------------------------------- |
+| `phoneNumber` | string | No       | Used for triangulation with Digital Footprint API |
+| `userId`      | string | No       | User identifier                                   |
 
-**Note:** The `get` call accepts a dictionary where you can also send email, userId, etc.
+> The `get()` method accepts a flexible dictionary. You may also send additional fields such as email, loginIdentifier, etc.
 
 ---
 
-## Error Handling
+# Error Handling
 
-If there is any error during initialization or a `get` call, it is handled using `.then()` and `.catch()` blocks.
-
-### Example Error Handling
+Errors during initialization or fingerprint retrieval are handled using `.catch()`.
 
 ```javascript
-sdk.initialize({ ... }).then((result) => {
-  result.get({ phoneNumber: '967****766' })
-    .then((response) => console.log(response))
-    .catch((error) => console.log('Get error:', error.message));
-}).catch((error) => {
-  console.log('Initialization error:', error.message);
-});
+sdk.initialize({ ... })
+  .then((result) => {
+    return result.get({ phoneNumber: '967****766' });
+  })
+  .then((response) => console.log(response))
+  .catch((error) => {
+    console.log('Error:', error.message);
+  });
 ```
 
 ---
 
-## Browser Fingerprint Response Structure
+# Browser Fingerprint Response Structure
 
-This section provides a detailed explanation of the fields included in the browser fingerprint response JSON.
-
-### JSON Structure
+Example response:
 
 ```json
 {
@@ -139,45 +354,60 @@ This section provides a detailed explanation of the fields included in the brows
 }
 ```
 
-### Field Descriptions
+---
+
+## Field Descriptions
 
 ### General Information
-- **requestId** *(string)*: A unique identifier for this fingerprint request.
-- **newDevice** *(boolean)*: Indicates whether this is a newly detected device (`true`) or a previously seen device (`false`).
-- **fingerprint** *(string)*: A unique identifier generated for the browser and device combination based on various fingerprinting techniques.
-- **sessionId** *(string)*: A unique session identifier for tracking user activity during a session.
-- **createdAt** *(integer)*: Timestamp (Unix format) representing when this fingerprint was generated.
-- **riskScore** *(string)*: Indicates the risk level of the detected fingerprint (e.g., "Low", "Medium", "High") triangulated with ip data and other malicious signals 
-- **firstSeenDays** *(integer)*: The number of days since this device was first seen.
 
-### IP Intelligence
-- **city** *(string)*: The city where the detected IP is located.
-- **region** *(string)*: The administrative region associated with the IP.
-- **country** *(string)*: The country code (ISO 3166-1 alpha-2) where the IP originates.
-- **latitude** *(float)*: Approximate latitude coordinate of the detected IP.
-- **longitude** *(float)*: Approximate longitude coordinate of the detected IP.
-- **isVPN** *(boolean)*: Indicates whether the detected IP is associated with a VPN service.
-- **isTor** *(boolean)*: Indicates whether the detected IP is part of the Tor network.
-- **isProxy** *(boolean)*: Indicates whether the detected IP is using a proxy server.
-- **ip** *(string)*: The IP address of the detected user.
-
-### Browser Detections
-- **isIncognito** *(boolean)*: Indicates whether the browser is in incognito or private browsing mode.
-- **isDevToolsOpen** *(boolean)*: Detects if the browser's developer tools are open.
-- **isBotDetected** *(boolean)*: Identifies if the user is a bot or an automated script.
-- **isAdBlockerEnabled** *(boolean)*: Determines if an ad blocker is active in the browser.
-- **isUserAgentSpoofed** *(boolean)*: Detects if the user agent string has been modified to disguise the browser's identity.
-
-**Note:** All signals are collected in real-time when the `get` call is made.
+* **requestId** *(string)* — Unique identifier for the fingerprint request
+* **newDevice** *(boolean)* — Whether the device is newly detected
+* **fingerprint** *(string)* — Unique identifier for the browser/device
+* **sessionId** *(string)* — Session identifier
+* **createdAt** *(integer)* — Unix timestamp of fingerprint generation
+* **riskScore** *(string)* — Risk level (Low / Medium / High), derived from device and IP intelligence
+* **firstSeenDays** *(integer)* — Days since the device was first seen
 
 ---
 
-## Change Log
+### IP Intelligence
 
-### Version 1.0.0
+* **city** — IP location city
+* **region** — Administrative region
+* **country** — ISO 3166-1 alpha-2 country code
+* **latitude / longitude** — Approximate geolocation
+* **isVPN** — VPN detected
+* **isTor** — Tor network detected
+* **isProxy** — Proxy detected
+* **ip** — User IP address
 
-- Initial release of Sign3 Web SDK integration guide.
-- Added `initialize` and `get` method details.
-- Included browser fingerprint response structure and field explanations.
-- Provided error handling examples.
+---
 
+### Browser Detections
+
+* **isIncognito** — Private browsing detected
+* **isDevToolsOpen** — Developer tools open
+* **isBotDetected** — Bot behavior detected
+* **isAdBlockerEnabled** — Ad blocker active
+* **isUserAgentSpoofed** — User agent tampering detected
+
+> All signals are collected in real time when `get()` is called.
+
+---
+
+# Change Log
+
+## Version 1.0.0
+
+* Initial release of Sign3 Web SDK
+* Added `initialize()` and `get()` documentation
+* Included browser fingerprint response structure
+* Added error handling examples
+
+---
+
+If you would like, I can also provide:
+
+* A **more enterprise-polished public documentation version**
+* A **shortened Quick Start version**
+* Or a **developer portal–ready Markdown version** optimized for tools like GitBook / Docusaurus**
