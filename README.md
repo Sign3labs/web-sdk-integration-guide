@@ -312,10 +312,15 @@ The browser SDK returns only a `requestId`. Your backend exchanges that `request
 ## Request
 
 ```bash
-curl --location 'https://intelligence-b.sign3.in/v1/request?requestId=<REQUEST_ID>' \
+curl --location 'https://intelligence-staging-b.sign3.in/v1/request?requestId=<REQUEST_ID>' \
   --header 'x-channel: web' \
   --header 'Authorization: Basic <BASE64(tenantId:tenantSecret)>'
 ```
+
+## Hook endpoints
+
+* STAGE - https://intelligence-staging-b.sign3.in/v1/request
+* PROD - https://intelligence-b.sign3.in/v1/request
 
 ## Query Parameters
 
